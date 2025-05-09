@@ -38,6 +38,9 @@ for dir in [train_dir, val_dir, test_dir]:
         os.makedirs(dir)
 '''
 
+# 设置原始数据目录
+original_data_dir = './dataset/original'  # 请确保这个目录存在并包含您的原始数据
+
 def split_data(original_data_dir, train_dir, val_dir, test_dir, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
     class_names = os.listdir(original_data_dir)
 
@@ -126,6 +129,14 @@ def _loss(model, data_loader):
 
 def train_cnn(model, optimizer, data_loader, epochs=10, penalty=[]):
     lossi = []
+    # 添加记录训练过程的列表
+    train_losses = []
+    val_losses = []
+    test_losses = []
+    train_accs = []
+    val_accs = []
+    test_accs = []
+    
     for epoch in range(epochs):
         for i, data in enumerate(data_loader, 0):
             inputs, labels = data
@@ -140,14 +151,37 @@ def train_cnn(model, optimizer, data_loader, epochs=10, penalty=[]):
             optimizer.step()
         # 评估模型，并输出结果
         stats = estimate_loss(model)
-        train_loss = f'train loss {stats["train"]["loss"]:.4f}'
-        val_loss = f'val loss {stats["val"]["loss"]:.4f}'
-        test_loss = f'test loss {stats["test"]["loss"]:.4f}'
-        print(f'epoch {epoch:>2}: {train_loss}, {val_loss}, {test_loss}')
-        train_acc = f'train acc {stats["train"]["accuracy"]:.4f}'
-        val_acc = f'val acc {stats["val"]["accuracy"]:.4f}'
-        test_acc = f'test acc {stats["test"]["accuracy"]:.4f}'
-        print(f'{"":>10}{train_acc}, {val_acc}, {test_acc}')
+        train_loss = stats["train"]["loss"]
+        val_loss = stats["val"]["loss"]
+        test_loss = stats["test"]["loss"]
+        train_acc = stats["train"]["accuracy"]
+        val_acc = stats["val"]["accuracy"]
+        test_acc = stats["test"]["accuracy"]
+        
+        # 记录数据
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        test_losses.append(test_loss)
+        train_accs.append(train_acc)
+        val_accs.append(val_acc)
+        test_accs.append(test_acc)
+        
+        print(f'epoch {epoch:>2}: train loss {train_loss:.4f}, val loss {val_loss:.4f}, test loss {test_loss:.4f}')
+        print(f'{"":>10}train acc {train_acc:.4f}, val acc {val_acc:.4f}, test acc {test_acc:.4f}')
+    
+    # 保存训练数据
+    import json
+    training_data = {
+        'train_losses': train_losses,
+        'val_losses': val_losses,
+        'test_losses': test_losses,
+        'train_accs': train_accs,
+        'val_accs': val_accs,
+        'test_accs': test_accs
+    }
+    with open('training_data.json', 'w') as f:
+        json.dump(training_data, f)
+    
     return lossi
 
 
@@ -188,5 +222,9 @@ model2 = CNN2()
 
 
 stats['cnn2'] = train_cnn(model2, optim.Adam(model2.parameters(), lr=0.01), train_loader, epochs=10)
+
+# 保存模型
+torch.save(model2.state_dict(), 'model2.pth')
+print("模型已保存为 'model2.pth'")
 
 print(stats)
